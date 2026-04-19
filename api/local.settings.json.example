@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "TABLE_STORAGE_CONNECTION_STRING": "",
+    "GITHUB_TOKEN": "",
+    "ANTHROPIC_API_KEY": "",
+    "GMAIL_USER": "",
+    "GMAIL_APP_PASSWORD": "",
+    "DIGEST_TO_EMAIL": "reachazure37@gmail.com",
+    "SITE_URL": "https://localhost:4280",
+    "SCAN_SECRET": "dev-secret",
+    "ADMIN_EMAIL": "reachazhar@hotmail.com",
+    "WEBSITE_TIME_ZONE": "Pacific Standard Time"
+  }
+}

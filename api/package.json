@@ -1,0 +1,22 @@
+{
+  "name": "claude-skills-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@azure/data-tables": "^13.3.2",
+    "@azure/functions": "^4.6.0",
+    "@octokit/rest": "^21.0.2",
+    "nodemailer": "^6.9.16"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.17",
+    "typescript": "~5.7.0"
+  }
+}

@@ -1,0 +1,44 @@
+name: Deploy Claude Skills Tracker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build + Deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Install API deps
+        working-directory: api
+        run: npm ci
+
+      - name: Build API
+        working-directory: api
+        run: npm run build
+
+      - name: Install SWA CLI
+        run: npm install -g @azure/static-web-apps-cli
+
+      - name: Deploy
+        run: >-
+          swa deploy ./dist
+          --api-location api
+          --deployment-token ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          --env production
+          --api-language node
+          --api-version 20
