@@ -2,6 +2,19 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/fu
 import { requireAuthorizedUser } from "../lib/auth.js";
 import { listAllSkills } from "../lib/tableClient.js";
 
+async function getGithubTokenExpiry(): Promise<string | null> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) return null;
+  try {
+    const res = await fetch("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${token}`, "User-Agent": "claude-skills-tracker" },
+    });
+    return res.headers.get("github-authentication-token-expiration");
+  } catch {
+    return null;
+  }
+}
+
 app.http("SkillsList", {
   methods: ["GET"],
   authLevel: "anonymous",
@@ -9,7 +22,7 @@ app.http("SkillsList", {
   handler: async (req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
       requireAuthorizedUser(req);
-      const all = await listAllSkills();
+      const [all, tokenExpiresAt] = await Promise.all([listAllSkills(), getGithubTokenExpiry()]);
       const skills = all
         .map((s) => ({
           id: s.rowKey,
@@ -24,7 +37,18 @@ app.http("SkillsList", {
           pushedAt: s.pushedAt,
         }))
         .sort((a, b) => (a.discoveredAt < b.discoveredAt ? 1 : -1));
-      return { status: 200, jsonBody: { skills, count: skills.length } };
+      const lastScanAt = skills.reduce<string>(
+        (max, s) => (s.lastSeenAt && s.lastSeenAt > max ? s.lastSeenAt : max),
+        "",
+      );
+      return {
+        status: 200,
+        jsonBody: {
+          skills,
+          count: skills.length,
+          meta: { tokenExpiresAt, lastScanAt: lastScanAt || null },
+        },
+      };
     } catch (err) {
       if ((err as Error).message === "Unauthorized") {
         return { status: 401, jsonBody: { error: "Unauthorized" } };

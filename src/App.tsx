@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { LoginGate } from "./components/LoginGate";
 import { SkillsTable } from "./components/SkillsTable";
-import { fetchPrincipal, fetchSkills, type ClientPrincipal, type Skill } from "./services/api";
+import {
+  fetchPrincipal,
+  fetchSkills,
+  type ClientPrincipal,
+  type Skill,
+  type SkillsMeta,
+} from "./services/api";
 
 type LoadState =
   | { kind: "loading" }
   | { kind: "unauthenticated"; reason?: string }
-  | { kind: "ready"; skills: Skill[]; principal: ClientPrincipal }
+  | { kind: "ready"; skills: Skill[]; meta: SkillsMeta; principal: ClientPrincipal }
   | { kind: "error"; message: string };
 
 export default function App() {
@@ -22,9 +28,9 @@ export default function App() {
         return;
       }
       try {
-        const skills = await fetchSkills();
+        const { skills, meta } = await fetchSkills();
         if (cancelled) return;
-        setState({ kind: "ready", skills, principal });
+        setState({ kind: "ready", skills, meta, principal });
       } catch (err) {
         if ((err as Error).message === "Unauthorized") {
           setState({
@@ -56,5 +62,5 @@ export default function App() {
       </div>
     );
   }
-  return <SkillsTable skills={state.skills} />;
+  return <SkillsTable skills={state.skills} meta={state.meta} />;
 }
