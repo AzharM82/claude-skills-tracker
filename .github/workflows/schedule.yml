@@ -1,0 +1,67 @@
+name: Scheduled Scan + Weekly Digest
+
+on:
+  schedule:
+    # Daily scan at 17:30 UTC (10:30 AM PT during PDT, 9:30 AM PT during PST)
+    - cron: "30 17 * * *"
+    # Weekly digest at 18:00 UTC Monday (11 AM PT during PDT, 10 AM PT during PST)
+    - cron: "0 18 * * 1"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Which job to run"
+        required: true
+        default: "scan"
+        type: choice
+        options:
+          - scan
+          - digest
+      lookback:
+        description: "Scan lookback window in days (scan only)"
+        required: false
+        default: "7"
+
+jobs:
+  scan:
+    if: github.event.schedule == '30 17 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'scan')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/skills/scan
+        env:
+          SCAN_SECRET: ${{ secrets.SCAN_SECRET }}
+          LOOKBACK: ${{ github.event.inputs.lookback || '7' }}
+        run: |
+          BASE="https://agreeable-sea-0650a141e.7.azurestaticapps.net/api/skills/scan"
+          QS="secret=${SCAN_SECRET}&lookback=${LOOKBACK}"
+          # SWA Free 45s edge timeout often fires before the scan finishes;
+          # the function continues server-side and the row updates land
+          # regardless. So we treat 200 AND 500 as success and only fail
+          # on connection errors. --max-time 90 lets the edge respond.
+          http_code=$(curl -sS -o /tmp/body -w "%{http_code}" -X POST --max-time 90 "${BASE}?${QS}" || echo "000")
+          echo "Scan lookback: ${LOOKBACK} days"
+          echo "HTTP ${http_code}"
+          head -c 4096 /tmp/body || true
+          echo
+          if [ "${http_code}" = "000" ]; then
+            echo "::error::scan request never reached the edge"
+            exit 1
+          fi
+
+  digest:
+    if: github.event.schedule == '0 18 * * 1' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'digest')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/digest/run
+        env:
+          SCAN_SECRET: ${{ secrets.SCAN_SECRET }}
+        run: |
+          BASE="https://agreeable-sea-0650a141e.7.azurestaticapps.net/api/digest/run"
+          QS="secret=${SCAN_SECRET}"
+          http_code=$(curl -sS -o /tmp/body -w "%{http_code}" -X POST --max-time 120 "${BASE}?${QS}" || echo "000")
+          echo "HTTP ${http_code}"
+          head -c 4096 /tmp/body || true
+          echo
+          if [ "${http_code}" = "000" ]; then
+            echo "::error::digest request never reached the edge"
+            exit 1
+          fi
