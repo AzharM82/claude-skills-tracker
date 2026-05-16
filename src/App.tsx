@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LoginGate } from "./components/LoginGate";
 import { SkillsTable } from "./components/SkillsTable";
+import { AITrendingTable } from "./components/AITrendingTable";
 import {
   fetchPrincipal,
   fetchSkills,
@@ -8,6 +9,8 @@ import {
   type Skill,
   type SkillsMeta,
 } from "./services/api";
+
+type Tab = "skills" | "trending";
 
 type LoadState =
   | { kind: "loading" }
@@ -17,6 +20,7 @@ type LoadState =
 
 export default function App() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [tab, setTab] = useState<Tab>("skills");
 
   useEffect(() => {
     let cancelled = false;
@@ -62,5 +66,45 @@ export default function App() {
       </div>
     );
   }
-  return <SkillsTable skills={state.skills} meta={state.meta} />;
+
+  return (
+    <div>
+      <nav className="max-w-6xl mx-auto px-6 pt-6 flex items-center gap-2 border-b border-[#24282e]">
+        <TabButton active={tab === "skills"} onClick={() => setTab("skills")}>
+          Skills
+        </TabButton>
+        <TabButton active={tab === "trending"} onClick={() => setTab("trending")}>
+          AI Trending
+        </TabButton>
+      </nav>
+      {tab === "skills" ? (
+        <SkillsTable skills={state.skills} meta={state.meta} />
+      ) : (
+        <AITrendingTable />
+      )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+        active
+          ? "border-[#2563eb] text-[#e6e8eb]"
+          : "border-transparent text-[#8a8f98] hover:text-[#e6e8eb]"
+      }`}
+    >
+      {children}
+    </button>
+  );
 }

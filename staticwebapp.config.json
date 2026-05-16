@@ -21,6 +21,10 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/api/ai-trending/scan",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/api/digest/run",
       "allowedRoles": ["anonymous"]
     },
