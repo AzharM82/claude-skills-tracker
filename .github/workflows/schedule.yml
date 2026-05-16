@@ -2,8 +2,11 @@ name: Scheduled Scan + Weekly Digest
 
 on:
   schedule:
-    # Daily scan at 17:30 UTC (10:30 AM PT during PDT, 9:30 AM PT during PST)
+    # Daily skills scan at 17:30 UTC (10:30 AM PT during PDT, 9:30 AM PT during PST)
     - cron: "30 17 * * *"
+    # Daily AI trending scan at 17:45 UTC — staggered 15 min after skills scan
+    # to avoid hammering the GitHub search API quota back-to-back.
+    - cron: "45 17 * * *"
     # Weekly digest at 18:00 UTC Monday (11 AM PT during PDT, 10 AM PT during PST)
     - cron: "0 18 * * 1"
   workflow_dispatch:
@@ -15,6 +18,7 @@ on:
         type: choice
         options:
           - scan
+          - ai-trending
           - digest
       lookback:
         description: "Scan lookback window in days (scan only)"
@@ -44,6 +48,30 @@ jobs:
           echo
           if [ "${http_code}" = "000" ]; then
             echo "::error::scan request never reached the edge"
+            exit 1
+          fi
+
+  ai-trending:
+    if: github.event.schedule == '45 17 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'ai-trending')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/ai-trending/scan
+        env:
+          SCAN_SECRET: ${{ secrets.SCAN_SECRET }}
+        run: |
+          BASE="https://agreeable-sea-0650a141e.7.azurestaticapps.net/api/ai-trending/scan"
+          QS="secret=${SCAN_SECRET}"
+          # 12 GitHub search calls run serially → can exceed the SWA Free
+          # 45s edge timeout. The function continues server-side and the
+          # rows land regardless, so we treat 200 AND 500 as success and
+          # only fail on connection errors. --max-time 120 gives the edge
+          # ample time to respond either way.
+          http_code=$(curl -sS -o /tmp/body -w "%{http_code}" -X POST --max-time 120 "${BASE}?${QS}" || echo "000")
+          echo "HTTP ${http_code}"
+          head -c 4096 /tmp/body || true
+          echo
+          if [ "${http_code}" = "000" ]; then
+            echo "::error::ai-trending scan request never reached the edge"
             exit 1
           fi
 
